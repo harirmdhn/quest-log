@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Connect Four — vs AI</title>
+<style>
+  :root, [data-theme="dark"] {
+    --bg: #0f0c1d;
+    --bg2: #241d44;
+    --panel: #1b1733;
+    --panel-border: #2e2752;
+    --board: #2a2566;
+    --board-shadow: rgba(0,0,0,0.4);
+    --slot: #0f0c1d;
+    --text: #ece8ff;
+    --muted: #9b93c7;
+    --accent: #ffcc4d;
+    --p1: #ff5e7e;
+    --p1-dark: #c93a58;
+    --p2: #ffd24d;
+    --p2-dark: #c99a1e;
+    --good: #4dffa3;
+    --ghost-border: #413a6e;
+    --shadow: rgba(0,0,0,0.35);
+  }
+  [data-theme="light"] {
+    --bg: #eef1fb;
+    --bg2: #dde3f7;
+    --panel: #ffffff;
+    --panel-border: #d2d8ee;
+    --board: #3a5bd0;
+    --board-shadow: rgba(60,80,180,0.3);
+    --slot: #eef1fb;
+    --text: #1c2340;
+    --muted: #5c6485;
+    --accent: #d08700;
+    --p1: #e23b5a;
+    --p1-dark: #b02544;
+    --p2: #f0b400;
+    --p2-dark: #c08c00;
+    --good: #0f9d58;
+    --ghost-border: #c2c9e6;
+    --shadow: rgba(100,110,160,0.2);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+    background: radial-gradient(circle at 30% 10%, var(--bg2) 0%, var(--bg) 60%);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 1.5rem 1rem 3rem;
+    transition: background 0.4s ease, color 0.4s ease;
+    text-align: center;
+  }
+  .wrap { max-width: 560px; margin: 0 auto; }
+  h1 { font-size: 2.1rem; margin: 0.2rem 0 0.1rem; color: var(--accent); letter-spacing: 1px; }
+  .sub { color: var(--muted); margin: 0 0 1.2rem; }
+
+  .theme-toggle {
+    position: fixed; top: 1rem; right: 1rem; z-index: 100;
+    background: var(--panel); border: 1px solid var(--panel-border);
+    color: var(--text); border-radius: 999px; padding: 0.5rem 0.9rem;
+    font-size: 1.3rem; cursor: pointer; box-shadow: 0 4px 14px var(--shadow);
+  }
+
+  .controls { display: flex; flex-wrap: wrap; gap: 0.6rem; justify-content: center; margin-bottom: 1.2rem; }
+  .controls label { color: var(--muted); font-size: 0.9rem; align-self: center; }
+  select, button {
+    font-family: inherit; font-size: 0.95rem; border-radius: 8px; padding: 0.5rem 1rem;
+    cursor: pointer; border: 1px solid var(--panel-border); background: var(--panel); color: var(--text);
+  }
+  button.primary { background: var(--accent); color: #241d44; border: none; font-weight: bold; }
+  button:active { transform: scale(0.97); }
+
+  .status {
+    font-size: 1.2rem; font-weight: bold; min-height: 1.6rem; margin-bottom: 1rem;
+    display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+  }
+  .dot { width: 18px; height: 18px; border-radius: 50%; display: inline-block; }
+  .dot.p1 { background: var(--p1); }
+  .dot.p2 { background: var(--p2); }
+
+  /* Board */
+  .board {
+    display: inline-grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+    background: var(--board);
+    padding: 12px;
+    border-radius: 16px;
+    box-shadow: 0 12px 30px var(--board-shadow);
+    transition: background 0.4s ease;
+  }
+  .cell {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background: var(--slot);
+    border-radius: 50%;
+    position: relative;
+    overflow: hidden;
+    box-shadow: inset 0 3px 6px rgba(0,0,0,0.35);
+  }
+  .disc {
+    position: absolute; inset: 6%;
+    border-radius: 50%;
+    transform: translateY(-800%);
+    transition: transform 0.45s cubic-bezier(0.34, 1.3, 0.64, 1);
+  }
+  .disc.p1 { background: radial-gradient(circle at 35% 30%, var(--p1), var(--p1-dark)); }
+  .disc.p2 { background: radial-gradient(circle at 35% 30%, var(--p2), var(--p2-dark)); }
+  .disc.landed { transform: translateY(0); }
+  .cell.win .disc { animation: pulse 0.7s ease-in-out infinite alternate; box-shadow: 0 0 16px var(--good); }
+  @keyframes pulse { from { transform: scale(1); } to { transform: scale(0.82); } }
+
+  /* clickable column overlay */
+  .cols { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; max-width: 100%; margin: 0 auto 8px; }
+  .col-btn {
+    aspect-ratio: 1 / 0.35; border-radius: 8px; border: none; cursor: pointer;
+    background: transparent; color: var(--muted); font-size: 1.2rem; transition: background 0.15s ease;
+  }
+  .col-btn:hover:not(:disabled) { background: var(--panel); color: var(--accent); }
+  .col-btn:disabled { cursor: not-allowed; opacity: 0.3; }
+
+  .scorebar { display: flex; justify-content: center; gap: 1.5rem; margin-top: 1.4rem; }
+  .score { background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px; padding: 0.7rem 1.3rem; }
+  .score .num { font-size: 1.5rem; font-weight: bold; }
+  .score .lbl { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .score.you .num { color: var(--p1); }
+  .score.ai .num { color: var(--p2); }
+  .score.draw .num { color: var(--muted); }
+
+  footer { color: var(--muted); font-size: 0.8rem; margin-top: 2rem; }
+</style>
+</head>
+<body>
+<button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle light/dark">🌙</button>
+
+<div class="wrap">
+  <h1>Connect Four</h1>
+  <p class="sub">Drop four in a row — beat the AI 🤖</p>
+
+  <div class="controls">
+    <label for="difficulty">AI difficulty:</label>
+    <select id="difficulty" onchange="newGame()">
+      <option value="2">Easy</option>
+      <option value="4" selected>Medium</option>
+      <option value="6">Hard</option>
+      <option value="8">Brutal</option>
+    </select>
+    <label for="first">You go:</label>
+    <select id="first" onchange="newGame()">
+      <option value="1" selected>First</option>
+      <option value="0">Second</option>
+    </select>
+    <button class="primary" onclick="newGame()">↻ New Game</button>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <div class="cols" id="cols"></div>
+  <div class="board" id="board"></div>
+
+  <div class="scorebar">
+    <div class="score you"><div class="num" id="scoreYou">0</div><div class="lbl">You</div></div>
+    <div class="score draw"><div class="num" id="scoreDraw">0</div><div class="lbl">Draws</div></div>
+    <div class="score ai"><div class="num" id="scoreAi">0</div><div class="lbl">AI</div></div>
+  </div>
+
+  <footer>Red = You · Yellow = AI · Scores saved in this browser.</footer>
+</div>
+
+<script>
+  const ROWS = 6, COLS = 7;
+  const HUMAN = 1, AI = 2;
+  let board = [];           // board[r][c], 0 empty, 1 human, 2 ai
+  let current = HUMAN;
+  let gameOver = false;
+  let busy = false;         // locks input during animation / AI thinking
+  let scores = { you: 0, ai: 0, draw: 0 };
+
+  const boardEl = document.getElementById('board');
+  const colsEl = document.getElementById('cols');
+  const statusEl = document.getElementById('status');
+
+  /* ---------- Setup ---------- */
+  function buildDOM() {
+    boardEl.innerHTML = '';
+    colsEl.innerHTML = '';
+    for (let c = 0; c < COLS; c++) {
+      const btn = document.createElement('button');
+      btn.className = 'col-btn';
+      btn.textContent = '▾';
+      btn.dataset.col = c;
+      btn.onclick = () => humanMove(c);
+      colsEl.appendChild(btn);
+    }
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.id = `c-${r}-${c}`;
+        const disc = document.createElement('div');
+        disc.className = 'disc';
+        cell.appendChild(disc);
+        boardEl.appendChild(cell);
+      }
+    }
+  }
+
+  function newGame() {
+    board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+    gameOver = false;
+    busy = false;
+    buildDOM();
+    const humanFirst = document.getElementById('first').value === '1';
+    current = humanFirst ? HUMAN : AI;
+    renderStatus();
+    if (current === AI) { busy = true; setTimeout(aiMove, 500); }
+  }
+
+  /* ---------- Rendering ---------- */
+  function renderStatus() {
+    if (gameOver) return;
+    if (current === HUMAN) {
+      statusEl.innerHTML = `<span class="dot p1"></span> Your turn`;
+    } else {
+      statusEl.innerHTML = `<span class="dot p2"></span> AI is thinking…`;
+    }
+    updateColButtons();
+  }
+  function updateColButtons() {
+    [...colsEl.children].forEach((btn, c) => {
+      btn.disabled = gameOver || busy || board[0][c] !== 0;
+    });
+  }
+
+  function placeDisc(r, c, player) {
+    const cell = document.getElementById(`c-${r}-${c}`);
+    const disc = cell.querySelector('.disc');
+    disc.classList.add(player === HUMAN ? 'p1' : 'p2');
+    // force reflow so transition plays
+    void disc.offsetWidth;
+    requestAnimationFrame(() => disc.classList.add('landed'));
+  }
+
+  /* ---------- Moves ---------- */
+  function dropRow(bd, c) {
+    for (let r = ROWS - 1; r >= 0; r--) if (bd[r][c] === 0) return r;
+    return -1;
+  }
+
+  function humanMove(c) {
+    if (gameOver || busy || current !== HUMAN) return;
+    const r = dropRow(board, c);
+    if (r < 0) return;
+    busy = true;
+    board[r][c] = HUMAN;
+    placeDisc(r, c, HUMAN);
+    updateColButtons();
+    setTimeout(() => finishTurn(HUMAN), 480);
+  }
+
+  function aiMove() {
+    if (gameOver) return;
+    const depth = parseInt(document.getElementById('difficulty').value, 10);
+    const c = bestMove(board, depth);
+    const r = dropRow(board, c);
+    board[r][c] = AI;
+    placeDisc(r, c, AI);
+    updateColButtons();
+    setTimeout(() => finishTurn(AI), 480);
+  }
+
+  function finishTurn(player) {
+    const win = findWin(board, player);
+    if (win) { endGame(player, win); return; }
+    if (isFull(board)) { endGame(0); return; }
+    current = player === HUMAN ? AI : HUMAN;
+    busy = (current === AI);
+    renderStatus();
+    if (current === AI) setTimeout(aiMove, 450);
+  }
+
+  function endGame(winner, winCells) {
+    gameOver = true; busy = false;
+    if (winner === HUMAN) {
+      statusEl.innerHTML = `🏆 <span class="dot p1"></span> You win!`;
+      scores.you++;
+    } else if (winner === AI) {
+      statusEl.innerHTML = `🤖 <span class="dot p2"></span> AI wins!`;
+      scores.ai++;
+    } else {
+      statusEl.textContent = `🤝 It's a draw!`;
+      scores.draw++;
+    }
+    if (winCells) winCells.forEach(([r, c]) => document.getElementById(`c-${r}-${c}`).classList.add('win'));
+    updateColButtons();
+    saveScores(); renderScores();
+  }
+
+  /* ---------- Win detection ---------- */
+  const DIRS = [[0, 1], [1, 0], [1, 1], [1, -1]];
+  function findWin(bd, player) {
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (bd[r][c] !== player) continue;
+        for (const [dr, dc] of DIRS) {
+          const cells = [[r, c]];
+          for (let k = 1; k < 4; k++) {
+            const nr = r + dr * k, nc = c + dc * k;
+            if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS || bd[nr][nc] !== player) break;
+            cells.push([nr, nc]);
+          }
+          if (cells.length === 4) return cells;
+        }
+      }
+    }
+    return null;
+  }
+  function isFull(bd) { return bd[0].every(v => v !== 0); }
+
+  /* ---------- AI: minimax with alpha-beta ---------- */
+  function bestMove(bd, depth) {
+    const valid = validCols(bd);
+    // immediate win?
+    for (const c of valid) { const b = cloneDrop(bd, c, AI); if (findWin(b, AI)) return c; }
+    // block human win?
+    for (const c of valid) { const b = cloneDrop(bd, c, HUMAN); if (findWin(b, HUMAN)) return c; }
+
+    let bestScore = -Infinity, move = valid[Math.floor(valid.length / 2)];
+    for (const c of orderCols(valid)) {
+      const b = cloneDrop(bd, c, AI);
+      const score = minimax(b, depth - 1, -Infinity, Infinity, false);
+      if (score > bestScore) { bestScore = score; move = c; }
+    }
+    return move;
+  }
+
+  function minimax(bd, depth, alpha, beta, maximizing) {
+    if (findWin(bd, AI)) return 100000 + depth;
+    if (findWin(bd, HUMAN)) return -100000 - depth;
+    const valid = validCols(bd);
+    if (depth === 0 || valid.length === 0) return evaluate(bd);
+
+    if (maximizing) {
+      let value = -Infinity;
+      for (const c of orderCols(valid)) {
+        value = Math.max(value, minimax(cloneDrop(bd, c, AI), depth - 1, alpha, beta, false));
+        alpha = Math.max(alpha, value);
+        if (alpha >= beta) break;
+      }
+      return value;
+    } else {
+      let value = Infinity;
+      for (const c of orderCols(valid)) {
+        value = Math.min(value, minimax(cloneDrop(bd, c, HUMAN), depth - 1, alpha, beta, true));
+        beta = Math.min(beta, value);
+        if (alpha >= beta) break;
+      }
+      return value;
+    }
+  }
+
+  function validCols(bd) { const v = []; for (let c = 0; c < COLS; c++) if (bd[0][c] === 0) v.push(c); return v; }
+  function orderCols(cols) { // center-first improves pruning
+    const center = 3;
+    return [...cols].sort((a, b) => Math.abs(a - center) - Math.abs(b - center));
+  }
+  function cloneDrop(bd, c, player) {
+    const b = bd.map(row => row.slice());
+    const r = dropRow(b, c);
+    if (r >= 0) b[r][c] = player;
+    return b;
+  }
+
+  // Heuristic: score windows of 4
+  function evaluate(bd) {
+    let score = 0;
+    // center column preference
+    for (let r = 0; r < ROWS; r++) if (bd[r][3] === AI) score += 6;
+    const windows = allWindows(bd);
+    for (const w of windows) score += scoreWindow(w);
+    return score;
+  }
+  function allWindows(bd) {
+    const w = [];
+    for (let r = 0; r < ROWS; r++)
+      for (let c = 0; c < COLS; c++)
+        for (const [dr, dc] of DIRS) {
+          const er = r + dr * 3, ec = c + dc * 3;
+          if (er < 0 || er >= ROWS || ec < 0 || ec >= COLS) continue;
+          const cells = [];
+          for (let k = 0; k < 4; k++) cells.push(bd[r + dr * k][c + dc * k]);
+          w.push(cells);
+        }
+    return w;
+  }
+  function scoreWindow(cells) {
+    const ai = cells.filter(v => v === AI).length;
+    const hu = cells.filter(v => v === HUMAN).length;
+    const empty = cells.filter(v => v === 0).length;
+    if (ai > 0 && hu > 0) return 0;
+    if (ai === 4) return 1000;
+    if (ai === 3 && empty === 1) return 50;
+    if (ai === 2 && empty === 2) return 10;
+    if (hu === 4) return -1000;
+    if (hu === 3 && empty === 1) return -80; // weight defense a bit higher
+    if (hu === 2 && empty === 2) return -8;
+    return 0;
+  }
+
+  /* ---------- Scores & theme ---------- */
+  function renderScores() {
+    document.getElementById('scoreYou').textContent = scores.you;
+    document.getElementById('scoreAi').textContent = scores.ai;
+    document.getElementById('scoreDraw').textContent = scores.draw;
+  }
+  function saveScores() { localStorage.setItem('c4_scores', JSON.stringify(scores)); }
+  function loadScores() {
+    try { const s = JSON.parse(localStorage.getItem('c4_scores') || '{}'); scores = { you: s.you || 0, ai: s.ai || 0, draw: s.draw || 0 }; }
+    catch (e) {}
+  }
+
+  function applyTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    document.getElementById('themeToggle').textContent = t === 'light' ? '☀️' : '🌙';
+    localStorage.setItem('c4_theme', t);
+  }
+  function toggleTheme() {
+    const cur = document.documentElement.getAttribute('data-theme') || 'dark';
+    applyTheme(cur === 'dark' ? 'light' : 'dark');
+  }
+
+  /* ---------- Init ---------- */
+  applyTheme(localStorage.getItem('c4_theme') || 'dark');
+  loadScores();
+  renderScores();
+  newGame();
+</script>
+</body>
+</html>
