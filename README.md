@@ -23,7 +23,8 @@ Rent keeps accruing based on real time, even while you're away (capped so it doe
 - **🏢 Multiple floors** — expand upward; each new floor adds 3 units (price scales).
 - **🏘️ Multiple buildings** — unlock a second building (Sunset Plaza) at level 4 and manage both via tabs.
 - **🌟 Tenant satisfaction** — a mood meter per unit. Nicer units and fulfilled requests keep tenants happy; happy tenants pay full rent (up to 2× an unhappy one), and very unhappy tenants may move out.
-- **🏆 Achievements** — 9 to unlock (first tenant, full house, go Deluxe, property mogul, and more).
+- **🌦️ Random events** — surprises pop up as you play: timed rent boosts (Street Festival, Housing Boom, Public Holiday) and decision events (fix a plumbing leak, bribe the rent inspector, welcome a VIP tenant) that affect coins and tenant mood. An on-screen banner counts down active rent boosts.
+- **🏆 Achievements** — 10 to unlock (first tenant, full house, go Deluxe, property mogul, weather 5 events, and more).
 - **🎵 Sound effects** — generated live with the WebAudio API (no files), with a mute toggle.
 - **💰 Collect All Rent button** — sweep up every unit's rent across all buildings in one tap.
 - **⭐ Leveling + 📅 day counter**, and a running **style score**.
