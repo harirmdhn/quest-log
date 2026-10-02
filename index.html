@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Quest Log — The Procrastination Translator</title>
+<style>
+  :root {
+    --bg: #0f0c1d;
+    --panel: #1b1733;
+    --accent: #ffcc4d;
+    --accent2: #a66bff;
+    --text: #ece8ff;
+    --muted: #9b93c7;
+    --danger: #ff6b6b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Georgia", "Times New Roman", serif;
+    background: radial-gradient(circle at 20% 10%, #241d44 0%, var(--bg) 60%);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2rem 1rem 4rem;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 2rem; }
+  h1 {
+    font-size: 2.4rem;
+    margin: 0.2rem 0;
+    color: var(--accent);
+    text-shadow: 0 0 18px rgba(255, 204, 77, 0.35);
+    letter-spacing: 1px;
+  }
+  .sub { color: var(--muted); font-style: italic; font-size: 1.05rem; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid #2e2752;
+    border-radius: 14px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+  }
+  label { display: block; margin-bottom: 0.6rem; color: var(--muted); font-size: 0.95rem; }
+  textarea, input[type=text] {
+    width: 100%;
+    background: #120f24;
+    border: 1px solid #35305c;
+    border-radius: 8px;
+    color: var(--text);
+    padding: 0.8rem;
+    font-size: 1rem;
+    font-family: inherit;
+    resize: vertical;
+  }
+  textarea { min-height: 90px; }
+  .btn-row { display: flex; flex-wrap: wrap; gap: 0.8rem; margin-top: 1rem; }
+  button {
+    cursor: pointer;
+    border: none;
+    border-radius: 999px;
+    padding: 0.75rem 1.4rem;
+    font-size: 1rem;
+    font-family: inherit;
+    font-weight: bold;
+    transition: transform 0.1s ease, box-shadow 0.2s ease;
+  }
+  button:active { transform: scale(0.96); }
+  .primary { background: var(--accent); color: #241d44; box-shadow: 0 0 16px rgba(255,204,77,0.4); }
+  .secondary { background: var(--accent2); color: #fff; }
+  .ghost { background: transparent; border: 1px solid #413a6e; color: var(--muted); }
+  .output {
+    margin-top: 1.2rem;
+    padding: 1.2rem;
+    border-left: 4px solid var(--accent);
+    background: #14112a;
+    border-radius: 0 10px 10px 0;
+    font-size: 1.15rem;
+    line-height: 1.6;
+    min-height: 2rem;
+    animation: fade 0.4s ease;
+  }
+  .excuse {
+    border-left-color: var(--accent2);
+    font-style: italic;
+  }
+  @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .stat-bar { display: flex; justify-content: space-between; gap: 1rem; margin-top: 1rem; }
+  .stat {
+    flex: 1;
+    text-align: center;
+    background: #14112a;
+    border-radius: 10px;
+    padding: 0.8rem;
+    border: 1px solid #2e2752;
+  }
+  .stat .num { font-size: 1.6rem; color: var(--accent); font-weight: bold; }
+  .stat .lbl { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  footer { text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 2rem; }
+  .emoji { font-size: 1.4rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="emoji">⚔️📜</div>
+    <h1>The Quest Log</h1>
+    <p class="sub">Turn your boring tasks into epic adventures (and dodge them heroically)</p>
+  </header>
+
+  <div class="panel">
+    <label for="task">Enter a dreadfully boring task:</label>
+    <textarea id="task" placeholder="e.g. Reply to the email about the quarterly report"></textarea>
+    <div class="btn-row">
+      <button class="primary" onclick="translateTask()">⚔️ Make It Epic</button>
+      <button class="ghost" onclick="document.getElementById('task').value=''; clearOut('questOut')">Clear</button>
+    </div>
+    <div id="questOut" class="output" style="display:none"></div>
+  </div>
+
+  <div class="panel">
+    <label>Can't be bothered? Summon a legendary excuse:</label>
+    <div class="btn-row">
+      <button class="secondary" onclick="generateExcuse()">🧙 Generate Excuse</button>
+    </div>
+    <div id="excuseOut" class="output excuse" style="display:none"></div>
+  </div>
+
+  <div class="panel">
+    <div class="stat-bar">
+      <div class="stat"><div class="num" id="xp">0</div><div class="lbl">XP Avoided</div></div>
+      <div class="stat"><div class="num" id="quests">0</div><div class="lbl">Quests Forged</div></div>
+      <div class="stat"><div class="num" id="excuses">0</div><div class="lbl">Excuses Cast</div></div>
+    </div>
+  </div>
+
+  <footer>Built for bored developers everywhere. No tasks were actually completed. 🏆</footer>
+</div>
+
+<script>
+  const epicVerbs = ["Vanquish", "Conquer", "Slay", "Banish", "Subdue", "Obliterate", "Tame", "Defeat"];
+  const epicNouns = ["the Dragon of", "the Ancient Curse of", "the Dark Lord of", "the Forbidden Realm of", "the Cursed Beast of", "the Eternal Burden of"];
+  const epicEndings = [
+    "— and glory shall be yours, brave soul.",
+    "Only then may the kingdom know peace.",
+    "The bards will sing of this deed for ages.",
+    "Fail not, for the fate of the realm depends upon it.",
+    "Legends foretold your coming for this very trial.",
+    "Steel your heart; the hour of destiny is nigh."
+  ];
+
+  const excuses = [
+    "My code is compiling... it has been compiling since the dawn of the third age.",
+    "A wild merge conflict appeared and I must meditate upon it in silence.",
+    "The ancient prophecy clearly states I rest on days ending in 'y'.",
+    "I'm currently blocked by a dependency that exists only in another dimension.",
+    "The sprint board whispered that this task belongs to Future Me, a far braver hero.",
+    "My rubber duck requires emotional support and I cannot abandon my post.",
+    "I'm deep in 'research' (a tab of 47 articles I will never read).",
+    "The CI pipeline is a sacred ritual and must not be rushed.",
+    "I'm waiting on feedback from a stakeholder who was last seen in 2019.",
+    "Mercury is in retrograde and so, regrettably, is my productivity."
+  ];
+
+  let xp = 0, questCount = 0, excuseCount = 0;
+
+  function rand(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+  function clearOut(id) { const el = document.getElementById(id); el.style.display = 'none'; el.textContent = ''; }
+
+  function translateTask() {
+    const raw = document.getElementById('task').value.trim();
+    const out = document.getElementById('questOut');
+    if (!raw) {
+      out.style.display = 'block';
+      out.textContent = "⚠️ A quest with no name? The council rejects your blank scroll.";
+      return;
+    }
+    const title = raw.charAt(0).toUpperCase() + raw.slice(1);
+    const epic = `${rand(epicVerbs)} ${rand(epicNouns)} "${title}" ${rand(epicEndings)}`;
+    out.style.display = 'block';
+    out.textContent = "📜 " + epic;
+    questCount++;
+    const gained = Math.floor(Math.random() * 400) + 100;
+    xp += gained;
+    updateStats();
+  }
+
+  function generateExcuse() {
+    const out = document.getElementById('excuseOut');
+    out.style.display = 'block';
+    out.textContent = "🧙 " + rand(excuses);
+    excuseCount++;
+    xp += Math.floor(Math.random() * 200) + 50;
+    updateStats();
+  }
+
+  function updateStats() {
+    document.getElementById('xp').textContent = xp.toLocaleString();
+    document.getElementById('quests').textContent = questCount;
+    document.getElementById('excuses').textContent = excuseCount;
+  }
+</script>
+</body>
+</html>
