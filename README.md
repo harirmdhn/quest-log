@@ -13,7 +13,12 @@ A single-file, zero-dependency web toy for bored developers. Paste in a dull wor
 - **🧙 Excuse Oracle** — one click summons a legendary excuse for the tasks you'd rather avoid.
 - **👹 Boss Battle** — turn your most dreaded task into a boss with a health bar and attack it until it falls.
 - **💰 Loot Drops** — satisfying emoji loot rains down whenever you forge a quest or land a hit.
-- **🏆 Stats panel** — tracks XP Avoided, Quests Forged, Excuses Cast, and Bosses Slain.
+- **🏆 Stats + Leveling** — tracks XP Avoided, Quests Forged, Excuses Cast, and Bosses Slain, with a hero rank + XP bar that levels you up (Intern of the Shire → Grandmaster of Goofing Off).
+- **🌙 / ☀️ Light & dark theme toggle** — your choice is remembered between visits.
+- **🔥 Combos** — act quickly in succession to rack up combo multipliers for bonus XP.
+- **🔊 Sound effects** — generated live with the WebAudio API (no sound files), with a mute toggle.
+- **⌨️ Keyboard shortcuts** — `Enter` to act, `E` for an excuse, `T` to toggle theme, `A` to attack a boss.
+- **💾 Progress saving** — your stats and preferences persist in `localStorage`.
 
 ## 🚀 Running it
 

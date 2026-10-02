@@ -5,24 +5,56 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Quest Log — The Procrastination Translator</title>
 <style>
-  :root {
+  :root, [data-theme="dark"] {
     --bg: #0f0c1d;
+    --bg2: #241d44;
     --panel: #1b1733;
+    --panel-border: #2e2752;
+    --input-bg: #120f24;
+    --input-border: #35305c;
+    --out-bg: #14112a;
     --accent: #ffcc4d;
     --accent2: #a66bff;
     --text: #ece8ff;
     --muted: #9b93c7;
     --danger: #ff6b6b;
     --good: #4dffa3;
+    --ghost-border: #413a6e;
+    --shadow: rgba(0,0,0,0.35);
+  }
+  [data-theme="light"] {
+    --bg: #f4f1ff;
+    --bg2: #e9e2ff;
+    --panel: #ffffff;
+    --panel-border: #d9d2f0;
+    --input-bg: #f6f4ff;
+    --input-border: #cdc5ea;
+    --out-bg: #f6f3ff;
+    --accent: #c88a00;
+    --accent2: #7b3fe4;
+    --text: #241d44;
+    --muted: #6b6490;
+    --danger: #d13c3c;
+    --good: #0f9d58;
+    --ghost-border: #cdc5ea;
+    --shadow: rgba(120,100,180,0.18);
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     font-family: "Georgia", "Times New Roman", serif;
-    background: radial-gradient(circle at 20% 10%, #241d44 0%, var(--bg) 60%);
+    background: radial-gradient(circle at 20% 10%, var(--bg2) 0%, var(--bg) 60%);
     color: var(--text);
     min-height: 100vh;
     padding: 2rem 1rem 4rem;
+    transition: background 0.4s ease, color 0.4s ease;
+  }
+  /* Theme toggle */
+  .theme-toggle {
+    position: fixed; top: 1rem; right: 1rem; z-index: 100;
+    background: var(--panel); border: 1px solid var(--panel-border);
+    color: var(--text); border-radius: 999px; padding: 0.5rem 1rem;
+    font-size: 1.3rem; box-shadow: 0 4px 14px var(--shadow);
   }
   .wrap { max-width: 760px; margin: 0 auto; }
   header { text-align: center; margin-bottom: 2rem; }
@@ -36,20 +68,21 @@
   .sub { color: var(--muted); font-style: italic; font-size: 1.05rem; }
   .panel {
     background: var(--panel);
-    border: 1px solid #2e2752;
+    border: 1px solid var(--panel-border);
     border-radius: 14px;
     padding: 1.5rem;
     margin-bottom: 1.5rem;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+    box-shadow: 0 8px 30px var(--shadow);
     position: relative;
     overflow: hidden;
+    transition: background 0.4s ease, border-color 0.4s ease;
   }
   .panel h2 { margin: 0 0 0.8rem; font-size: 1.2rem; color: var(--accent2); }
   label { display: block; margin-bottom: 0.6rem; color: var(--muted); font-size: 0.95rem; }
   textarea, input[type=text] {
     width: 100%;
-    background: #120f24;
-    border: 1px solid #35305c;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
     border-radius: 8px;
     color: var(--text);
     padding: 0.8rem;
@@ -73,12 +106,12 @@
   .primary { background: var(--accent); color: #241d44; box-shadow: 0 0 16px rgba(255,204,77,0.4); }
   .secondary { background: var(--accent2); color: #fff; }
   .danger { background: var(--danger); color: #2a0f0f; box-shadow: 0 0 16px rgba(255,107,107,0.4); }
-  .ghost { background: transparent; border: 1px solid #413a6e; color: var(--muted); }
+  .ghost { background: transparent; border: 1px solid var(--ghost-border); color: var(--muted); }
   .output {
     margin-top: 1.2rem;
     padding: 1.2rem;
     border-left: 4px solid var(--accent);
-    background: #14112a;
+    background: var(--out-bg);
     border-radius: 0 10px 10px 0;
     font-size: 1.15rem;
     line-height: 1.6;
@@ -90,7 +123,8 @@
 
   /* Stats */
   .stat-bar { display: flex; justify-content: space-between; gap: 1rem; margin-top: 1rem; }
-  .stat { flex: 1; text-align: center; background: #14112a; border-radius: 10px; padding: 0.8rem; border: 1px solid #2e2752; }
+  .stat { flex: 1; text-align: center; background: var(--out-bg); border-radius: 10px; padding: 0.8rem; border: 1px solid var(--panel-border); transition: transform 0.15s ease; }
+  .stat.bump { transform: scale(1.12); }
   .stat .num { font-size: 1.6rem; color: var(--accent); font-weight: bold; }
   .stat .lbl { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
 
@@ -111,19 +145,40 @@
   @keyframes fall { to { transform: translateY(110vh) rotate(360deg); opacity: 0.2; } }
 
   /* Quest card */
-  #cardCanvas { max-width: 100%; border-radius: 10px; margin-top: 1rem; display: none; border: 1px solid #2e2752; }
+  #cardCanvas { max-width: 100%; border-radius: 10px; margin-top: 1rem; display: none; border: 1px solid var(--panel-border); }
+
+  /* XP / Level bar */
+  .level-wrap { margin-top: 1rem; }
+  .level-row { display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--muted); margin-bottom: 0.3rem; }
+  .level-row .lv { color: var(--accent); font-weight: bold; }
+  .xp-track { background: var(--out-bg); border: 1px solid var(--panel-border); border-radius: 999px; height: 16px; overflow: hidden; }
+  .xp-bar { background: linear-gradient(90deg, var(--accent2), var(--accent)); height: 100%; width: 0%; transition: width 0.5s ease; }
+
+  /* Combo popup */
+  .combo { position: fixed; left: 50%; top: 30%; transform: translateX(-50%); font-size: 2rem; font-weight: bold; color: var(--accent); text-shadow: 0 0 12px var(--accent2); pointer-events: none; z-index: 90; animation: comboPop 0.9s ease forwards; }
+  @keyframes comboPop { 0% { opacity: 0; transform: translate(-50%, 10px) scale(0.6); } 20% { opacity: 1; transform: translate(-50%, 0) scale(1.2); } 100% { opacity: 0; transform: translate(-50%, -40px) scale(1); } }
+
+  /* Level-up banner */
+  .levelup { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 2.6rem; font-weight: bold; color: var(--accent); text-shadow: 0 0 24px var(--accent2); pointer-events: none; z-index: 95; animation: luFade 1.4s ease forwards; }
+  @keyframes luFade { 0% { opacity: 0; transform: scale(0.5); } 25% { opacity: 1; transform: scale(1.1); } 75% { opacity: 1; } 100% { opacity: 0; transform: scale(1.3); } }
+
+  .hint-keys { text-align: center; color: var(--muted); font-size: 0.8rem; margin-top: -0.5rem; margin-bottom: 1.5rem; }
+  kbd { background: var(--out-bg); border: 1px solid var(--panel-border); border-radius: 5px; padding: 1px 6px; font-family: monospace; }
 
   footer { text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 2rem; }
   .emoji { font-size: 1.4rem; }
 </style>
 </head>
 <body>
+<button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle light/dark theme">🌙</button>
+<button class="theme-toggle" id="soundToggle" onclick="toggleSound()" title="Toggle sound effects" style="right: 5rem;">🔊</button>
 <div class="wrap">
   <header>
     <div class="emoji">⚔️📜</div>
     <h1>The Quest Log</h1>
     <p class="sub">Turn your boring tasks into epic adventures (and dodge them heroically)</p>
   </header>
+  <p class="hint-keys">Shortcuts: <kbd>Enter</kbd> in a field to act · <kbd>E</kbd> for excuse · <kbd>T</kbd> toggle theme</p>
 
   <div class="panel">
     <h2>📜 Quest Forge</h2>
@@ -177,9 +232,19 @@
       <div class="stat"><div class="num" id="excuses">0</div><div class="lbl">Excuses Cast</div></div>
       <div class="stat"><div class="num" id="bosses">0</div><div class="lbl">Bosses Slain</div></div>
     </div>
+    <div class="level-wrap">
+      <div class="level-row">
+        <span>Hero Rank: <span class="lv" id="levelName">Intern of the Shire</span></span>
+        <span>Lv <span class="lv" id="level">1</span></span>
+      </div>
+      <div class="xp-track"><div class="xp-bar" id="xpBar"></div></div>
+    </div>
+    <div class="btn-row">
+      <button class="ghost" onclick="resetProgress()">🔄 Reset Progress</button>
+    </div>
   </div>
 
-  <footer>Built for bored developers everywhere. No tasks were actually completed. 🏆</footer>
+  <footer>Built for bored developers everywhere. No tasks were actually completed. 🏆<br><span style="font-size:0.8rem">Your glorious procrastination is saved locally in this browser.</span></footer>
 </div>
 
 <script>
@@ -209,11 +274,73 @@
 
   const lootItems = ["💰", "💎", "🗡️", "🛡️", "🏆", "📜", "🔮", "👑", "⚗️", "🍗"];
 
+  const ranks = [
+    "Intern of the Shire", "Squire of Standups", "Knight of the Keyboard",
+    "Baron of Backlog", "Duke of Deadlines", "Warlord of WIP",
+    "Archmage of Avoidance", "Legend of the Lunch Break", "Grandmaster of Goofing Off"
+  ];
+
   let xp = 0, questCount = 0, excuseCount = 0, bossCount = 0;
   let lastEpic = "";
+  let soundOn = true;
+  let combo = 0, lastActionTime = 0;
 
   function rand(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
   function clearOut(id) { const el = document.getElementById(id); el.style.display = 'none'; el.textContent = ''; }
+
+  /* ---------- Sound (WebAudio, no files needed) ---------- */
+  let audioCtx = null;
+  function beep(freq, dur, type) {
+    if (!soundOn) return;
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = type || 'triangle'; o.frequency.value = freq;
+      g.gain.setValueAtTime(0.08, audioCtx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(); o.stop(audioCtx.currentTime + dur);
+    } catch (e) {}
+  }
+  function sfxQuest() { beep(523, 0.12); setTimeout(() => beep(784, 0.18), 90); }
+  function sfxExcuse() { beep(330, 0.14, 'sine'); }
+  function sfxHit() { beep(180 + Math.random() * 80, 0.08, 'square'); }
+  function sfxVictory() { [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => beep(f, 0.2), i * 110)); }
+  function sfxLevel() { [659, 880, 1319].forEach((f, i) => setTimeout(() => beep(f, 0.25, 'triangle'), i * 120)); }
+
+  /* ---------- Combo system ---------- */
+  function registerCombo() {
+    const now = Date.now();
+    if (now - lastActionTime < 2500) { combo++; } else { combo = 1; }
+    lastActionTime = now;
+    if (combo >= 2) {
+      const el = document.createElement('div');
+      el.className = 'combo';
+      el.textContent = `COMBO x${combo}! ` + (combo >= 5 ? "🔥🔥" : "🔥");
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 900);
+      return combo; // bonus multiplier
+    }
+    return 1;
+  }
+
+  function addXP(amount) {
+    const before = levelFromXP(xp);
+    xp += amount;
+    const after = levelFromXP(xp);
+    if (after > before) { showLevelUp(after); sfxLevel(); }
+  }
+  function levelFromXP(x) { return Math.floor(Math.sqrt(x / 150)) + 1; }
+  function xpForLevel(l) { return Math.pow(l - 1, 2) * 150; }
+
+  function showLevelUp(lv) {
+    const el = document.createElement('div');
+    el.className = 'levelup';
+    el.textContent = `⭐ LEVEL ${lv}! ⭐`;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1400);
+    dropLoot(10);
+  }
 
   function translateTask() {
     const raw = document.getElementById('task').value.trim();
@@ -228,9 +355,9 @@
     out.style.display = 'block';
     out.textContent = "📜 " + lastEpic;
     questCount++;
-    xp += Math.floor(Math.random() * 400) + 100;
-    updateStats();
-    dropLoot(4);
+    const mult = registerCombo();
+    addXP((Math.floor(Math.random() * 400) + 100) * mult);
+    updateStats(); save(); sfxQuest(); dropLoot(4);
   }
 
   function generateExcuse() {
@@ -238,8 +365,9 @@
     out.style.display = 'block';
     out.textContent = "🧙 " + rand(excuses);
     excuseCount++;
-    xp += Math.floor(Math.random() * 200) + 50;
-    updateStats();
+    const mult = registerCombo();
+    addXP((Math.floor(Math.random() * 200) + 50) * mult);
+    updateStats(); save(); sfxExcuse();
   }
 
   /* ---------- Boss Battle ---------- */
@@ -261,15 +389,16 @@
     bossHP = Math.max(0, bossHP - dmg);
     const be = document.getElementById('bossEmoji');
     be.classList.add('hit'); setTimeout(() => be.classList.remove('hit'), 300);
-    xp += dmg * 3;
-    updateHP(); updateStats(); dropLoot(2);
+    addXP(dmg * 3);
+    updateHP(); updateStats(); dropLoot(2); sfxHit();
     if (bossHP === 0) {
       bossActive = false;
       bossCount++;
       document.getElementById('attackBtn').style.display = 'none';
       document.getElementById('victory').style.display = 'block';
       document.getElementById('bossEmoji').textContent = "💥";
-      updateStats();
+      addXP(500);
+      updateStats(); save(); sfxVictory();
       dropLoot(14);
     }
   }
@@ -347,12 +476,87 @@
     link.click();
   }
 
+  function bump(id) {
+    const el = document.getElementById(id).closest('.stat');
+    if (!el) return;
+    el.classList.add('bump'); setTimeout(() => el.classList.remove('bump'), 160);
+  }
+
   function updateStats() {
+    const prevXp = document.getElementById('xp').textContent;
     document.getElementById('xp').textContent = xp.toLocaleString();
     document.getElementById('quests').textContent = questCount;
     document.getElementById('excuses').textContent = excuseCount;
     document.getElementById('bosses').textContent = bossCount;
+    if (prevXp !== xp.toLocaleString()) bump('xp');
+
+    // level bar
+    const lv = levelFromXP(xp);
+    const curBase = xpForLevel(lv), nextBase = xpForLevel(lv + 1);
+    const pct = Math.min(100, ((xp - curBase) / (nextBase - curBase)) * 100);
+    document.getElementById('level').textContent = lv;
+    document.getElementById('levelName').textContent = ranks[Math.min(lv - 1, ranks.length - 1)];
+    document.getElementById('xpBar').style.width = pct + '%';
   }
+
+  /* ---------- Theme ---------- */
+  function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    document.getElementById('themeToggle').textContent = theme === 'light' ? '☀️' : '🌙';
+    localStorage.setItem('ql_theme', theme);
+  }
+  function toggleTheme() {
+    const cur = document.documentElement.getAttribute('data-theme') || 'dark';
+    applyTheme(cur === 'dark' ? 'light' : 'dark');
+    beep(440, 0.08);
+  }
+  function toggleSound() {
+    soundOn = !soundOn;
+    document.getElementById('soundToggle').textContent = soundOn ? '🔊' : '🔇';
+    localStorage.setItem('ql_sound', soundOn ? '1' : '0');
+    if (soundOn) beep(660, 0.1);
+  }
+
+  /* ---------- Persistence ---------- */
+  function save() {
+    localStorage.setItem('ql_save', JSON.stringify({ xp, questCount, excuseCount, bossCount }));
+  }
+  function load() {
+    try {
+      const s = JSON.parse(localStorage.getItem('ql_save') || '{}');
+      xp = s.xp || 0; questCount = s.questCount || 0;
+      excuseCount = s.excuseCount || 0; bossCount = s.bossCount || 0;
+    } catch (e) {}
+  }
+  function resetProgress() {
+    if (!confirm("Abandon all your hard-earned procrastination? This cannot be undone.")) return;
+    xp = questCount = excuseCount = bossCount = 0;
+    save(); updateStats(); beep(200, 0.2, 'sawtooth');
+  }
+
+  /* ---------- Keyboard shortcuts ---------- */
+  document.getElementById('task').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey || !e.shiftKey)) { e.preventDefault(); translateTask(); }
+  });
+  document.getElementById('boss').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); bossActive ? attackBoss() : startBoss(); }
+  });
+  document.addEventListener('keydown', e => {
+    const typing = ['TEXTAREA', 'INPUT'].includes(document.activeElement.tagName);
+    if (typing) return;
+    if (e.key.toLowerCase() === 'e') generateExcuse();
+    if (e.key.toLowerCase() === 't') toggleTheme();
+    if (e.key.toLowerCase() === 'a' && bossActive) attackBoss();
+  });
+
+  /* ---------- Init ---------- */
+  (function init() {
+    applyTheme(localStorage.getItem('ql_theme') || 'dark');
+    soundOn = localStorage.getItem('ql_sound') !== '0';
+    document.getElementById('soundToggle').textContent = soundOn ? '🔊' : '🔇';
+    load();
+    updateStats();
+  })();
 </script>
 </body>
 </html>
