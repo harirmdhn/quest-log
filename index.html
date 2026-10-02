@@ -13,6 +13,7 @@
     --text: #ece8ff;
     --muted: #9b93c7;
     --danger: #ff6b6b;
+    --good: #4dffa3;
   }
   * { box-sizing: border-box; }
   body {
@@ -40,7 +41,10 @@
     padding: 1.5rem;
     margin-bottom: 1.5rem;
     box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+    position: relative;
+    overflow: hidden;
   }
+  .panel h2 { margin: 0 0 0.8rem; font-size: 1.2rem; color: var(--accent2); }
   label { display: block; margin-bottom: 0.6rem; color: var(--muted); font-size: 0.95rem; }
   textarea, input[type=text] {
     width: 100%;
@@ -68,6 +72,7 @@
   button:active { transform: scale(0.96); }
   .primary { background: var(--accent); color: #241d44; box-shadow: 0 0 16px rgba(255,204,77,0.4); }
   .secondary { background: var(--accent2); color: #fff; }
+  .danger { background: var(--danger); color: #2a0f0f; box-shadow: 0 0 16px rgba(255,107,107,0.4); }
   .ghost { background: transparent; border: 1px solid #413a6e; color: var(--muted); }
   .output {
     margin-top: 1.2rem;
@@ -80,22 +85,34 @@
     min-height: 2rem;
     animation: fade 0.4s ease;
   }
-  .excuse {
-    border-left-color: var(--accent2);
-    font-style: italic;
-  }
+  .excuse { border-left-color: var(--accent2); font-style: italic; }
   @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  /* Stats */
   .stat-bar { display: flex; justify-content: space-between; gap: 1rem; margin-top: 1rem; }
-  .stat {
-    flex: 1;
-    text-align: center;
-    background: #14112a;
-    border-radius: 10px;
-    padding: 0.8rem;
-    border: 1px solid #2e2752;
-  }
+  .stat { flex: 1; text-align: center; background: #14112a; border-radius: 10px; padding: 0.8rem; border: 1px solid #2e2752; }
   .stat .num { font-size: 1.6rem; color: var(--accent); font-weight: bold; }
   .stat .lbl { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+
+  /* Boss battle */
+  .boss-stage { display: none; margin-top: 1.2rem; text-align: center; }
+  .boss-emoji { font-size: 3.5rem; display: inline-block; animation: bob 1.4s ease-in-out infinite; }
+  .boss-emoji.hit { animation: shake 0.3s; }
+  @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+  @keyframes shake { 0%,100%{transform:translateX(0);} 25%{transform:translateX(-8px);} 75%{transform:translateX(8px);} }
+  .boss-name { font-size: 1.1rem; color: var(--danger); margin: 0.5rem 0; }
+  .hp-wrap { background: #2a0f0f; border-radius: 999px; height: 22px; overflow: hidden; border: 1px solid #4a1f1f; }
+  .hp-fill { background: linear-gradient(90deg, #ff6b6b, #ffcc4d); height: 100%; width: 100%; transition: width 0.4s ease; }
+  .hp-text { font-size: 0.8rem; color: var(--muted); margin-top: 0.3rem; }
+  .victory { color: var(--good); font-size: 1.3rem; margin-top: 0.8rem; font-weight: bold; }
+
+  /* Loot drop */
+  .loot { position: fixed; top: -40px; font-size: 1.8rem; pointer-events: none; z-index: 50; animation: fall linear forwards; }
+  @keyframes fall { to { transform: translateY(110vh) rotate(360deg); opacity: 0.2; } }
+
+  /* Quest card */
+  #cardCanvas { max-width: 100%; border-radius: 10px; margin-top: 1rem; display: none; border: 1px solid #2e2752; }
+
   footer { text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 2rem; }
   .emoji { font-size: 1.4rem; }
 </style>
@@ -109,16 +126,26 @@
   </header>
 
   <div class="panel">
+    <h2>📜 Quest Forge</h2>
     <label for="task">Enter a dreadfully boring task:</label>
     <textarea id="task" placeholder="e.g. Reply to the email about the quarterly report"></textarea>
     <div class="btn-row">
       <button class="primary" onclick="translateTask()">⚔️ Make It Epic</button>
-      <button class="ghost" onclick="document.getElementById('task').value=''; clearOut('questOut')">Clear</button>
+      <button class="secondary" onclick="makeCard()">🎴 Make Shareable Card</button>
+      <button class="ghost" onclick="document.getElementById('task').value=''; clearOut('questOut'); document.getElementById('cardCanvas').style.display='none'">Clear</button>
     </div>
     <div id="questOut" class="output" style="display:none"></div>
+    <canvas id="cardCanvas" width="760" height="400"></canvas>
+    <div id="cardHint" style="display:none; color:var(--muted); font-size:0.85rem; margin-top:0.5rem;">
+      👉 Right-click the card → "Save image as…" to share it, or use the download button.
+    </div>
+    <div class="btn-row" id="dlRow" style="display:none">
+      <button class="ghost" onclick="downloadCard()">⬇️ Download Card</button>
+    </div>
   </div>
 
   <div class="panel">
+    <h2>🧙 Excuse Oracle</h2>
     <label>Can't be bothered? Summon a legendary excuse:</label>
     <div class="btn-row">
       <button class="secondary" onclick="generateExcuse()">🧙 Generate Excuse</button>
@@ -127,10 +154,28 @@
   </div>
 
   <div class="panel">
+    <h2>👹 Boss Battle</h2>
+    <label for="boss">Name your most dreaded task — face it as a BOSS:</label>
+    <input type="text" id="boss" placeholder="e.g. Finish the Q3 performance review" />
+    <div class="btn-row">
+      <button class="danger" onclick="startBoss()">👹 Summon Boss</button>
+      <button class="primary" id="attackBtn" onclick="attackBoss()" style="display:none">🗡️ Attack!</button>
+    </div>
+    <div class="boss-stage" id="bossStage">
+      <div class="boss-emoji" id="bossEmoji">👹</div>
+      <div class="boss-name" id="bossName"></div>
+      <div class="hp-wrap"><div class="hp-fill" id="hpFill"></div></div>
+      <div class="hp-text" id="hpText"></div>
+      <div class="victory" id="victory" style="display:none">🏆 VICTORY! The realm is saved… until the next sprint.</div>
+    </div>
+  </div>
+
+  <div class="panel">
     <div class="stat-bar">
       <div class="stat"><div class="num" id="xp">0</div><div class="lbl">XP Avoided</div></div>
       <div class="stat"><div class="num" id="quests">0</div><div class="lbl">Quests Forged</div></div>
       <div class="stat"><div class="num" id="excuses">0</div><div class="lbl">Excuses Cast</div></div>
+      <div class="stat"><div class="num" id="bosses">0</div><div class="lbl">Bosses Slain</div></div>
     </div>
   </div>
 
@@ -162,7 +207,10 @@
     "Mercury is in retrograde and so, regrettably, is my productivity."
   ];
 
-  let xp = 0, questCount = 0, excuseCount = 0;
+  const lootItems = ["💰", "💎", "🗡️", "🛡️", "🏆", "📜", "🔮", "👑", "⚗️", "🍗"];
+
+  let xp = 0, questCount = 0, excuseCount = 0, bossCount = 0;
+  let lastEpic = "";
 
   function rand(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
   function clearOut(id) { const el = document.getElementById(id); el.style.display = 'none'; el.textContent = ''; }
@@ -176,13 +224,13 @@
       return;
     }
     const title = raw.charAt(0).toUpperCase() + raw.slice(1);
-    const epic = `${rand(epicVerbs)} ${rand(epicNouns)} "${title}" ${rand(epicEndings)}`;
+    lastEpic = `${rand(epicVerbs)} ${rand(epicNouns)} "${title}" ${rand(epicEndings)}`;
     out.style.display = 'block';
-    out.textContent = "📜 " + epic;
+    out.textContent = "📜 " + lastEpic;
     questCount++;
-    const gained = Math.floor(Math.random() * 400) + 100;
-    xp += gained;
+    xp += Math.floor(Math.random() * 400) + 100;
     updateStats();
+    dropLoot(4);
   }
 
   function generateExcuse() {
@@ -194,10 +242,116 @@
     updateStats();
   }
 
+  /* ---------- Boss Battle ---------- */
+  let bossHP = 0, bossMaxHP = 0, bossActive = false;
+  function startBoss() {
+    const name = document.getElementById('boss').value.trim();
+    if (!name) { alert("A boss needs a name! Enter your dreaded task."); return; }
+    bossMaxHP = 100; bossHP = 100; bossActive = true;
+    document.getElementById('bossName').textContent = `The Dreaded "${name}"`;
+    document.getElementById('bossStage').style.display = 'block';
+    document.getElementById('attackBtn').style.display = 'inline-block';
+    document.getElementById('victory').style.display = 'none';
+    document.getElementById('bossEmoji').textContent = rand(["👹","🐉","👺","💀","🦑","🧟"]);
+    updateHP();
+  }
+  function attackBoss() {
+    if (!bossActive) return;
+    const dmg = Math.floor(Math.random() * 25) + 10;
+    bossHP = Math.max(0, bossHP - dmg);
+    const be = document.getElementById('bossEmoji');
+    be.classList.add('hit'); setTimeout(() => be.classList.remove('hit'), 300);
+    xp += dmg * 3;
+    updateHP(); updateStats(); dropLoot(2);
+    if (bossHP === 0) {
+      bossActive = false;
+      bossCount++;
+      document.getElementById('attackBtn').style.display = 'none';
+      document.getElementById('victory').style.display = 'block';
+      document.getElementById('bossEmoji').textContent = "💥";
+      updateStats();
+      dropLoot(14);
+    }
+  }
+  function updateHP() {
+    document.getElementById('hpFill').style.width = (bossHP / bossMaxHP * 100) + '%';
+    document.getElementById('hpText').textContent = `HP: ${bossHP} / ${bossMaxHP}`;
+  }
+
+  /* ---------- Loot Drop ---------- */
+  function dropLoot(count) {
+    for (let i = 0; i < count; i++) {
+      const el = document.createElement('div');
+      el.className = 'loot';
+      el.textContent = rand(lootItems);
+      el.style.left = Math.random() * 100 + 'vw';
+      el.style.animationDuration = (Math.random() * 1.5 + 1.5) + 's';
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 3200);
+    }
+  }
+
+  /* ---------- Shareable Quest Card ---------- */
+  function makeCard() {
+    if (!lastEpic) { translateTask(); }
+    if (!lastEpic) return;
+    const canvas = document.getElementById('cardCanvas');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+
+    // background
+    const grad = ctx.createLinearGradient(0, 0, W, H);
+    grad.addColorStop(0, '#241d44'); grad.addColorStop(1, '#0f0c1d');
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+
+    // border
+    ctx.strokeStyle = '#ffcc4d'; ctx.lineWidth = 6;
+    ctx.strokeRect(16, 16, W - 32, H - 32);
+
+    // title
+    ctx.fillStyle = '#ffcc4d';
+    ctx.font = 'bold 34px Georgia';
+    ctx.textAlign = 'center';
+    ctx.fillText('⚔️  QUEST ACCEPTED  ⚔️', W / 2, 80);
+
+    // quest text (wrapped)
+    ctx.fillStyle = '#ece8ff';
+    ctx.font = '24px Georgia';
+    wrapText(ctx, lastEpic, W / 2, 150, W - 100, 34);
+
+    // footer
+    ctx.fillStyle = '#9b93c7';
+    ctx.font = 'italic 18px Georgia';
+    ctx.fillText('— forged in The Quest Log —', W / 2, H - 40);
+
+    canvas.style.display = 'block';
+    document.getElementById('cardHint').style.display = 'block';
+    document.getElementById('dlRow').style.display = 'flex';
+  }
+  function wrapText(ctx, text, x, y, maxW, lh) {
+    const words = text.split(' ');
+    let line = '';
+    for (const w of words) {
+      const test = line + w + ' ';
+      if (ctx.measureText(test).width > maxW && line) {
+        ctx.fillText(line.trim(), x, y); line = w + ' '; y += lh;
+      } else { line = test; }
+    }
+    ctx.fillText(line.trim(), x, y);
+  }
+  function downloadCard() {
+    const canvas = document.getElementById('cardCanvas');
+    const link = document.createElement('a');
+    link.download = 'quest-card.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }
+
   function updateStats() {
     document.getElementById('xp').textContent = xp.toLocaleString();
     document.getElementById('quests').textContent = questCount;
     document.getElementById('excuses').textContent = excuseCount;
+    document.getElementById('bosses').textContent = bossCount;
   }
 </script>
 </body>
